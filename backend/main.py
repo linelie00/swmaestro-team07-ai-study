@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 
 # 태민님 agent
-from agents.agent1.Agent1 import Agent1
+from backend.agents.ProfileDiagnosisAgent.ProfileDiagnosisAgent import Agent1
 
 # 태환님 agent
 from agents.agent2.Agent2 import Agent2
