@@ -73,7 +73,7 @@ async def run_agent3(
         and state.revision_count < MAX_REVISIONS
     ):
         state.revision_count += 1  # CANON E: route(orchestrator)에서만 증가
-        state = run_roadmap_plan(state)   # critic_report=revise → 위반 컨텍스트 주입
+        state = await run_roadmap_plan(state)   # critic_report=revise → 위반 컨텍스트 주입
         state = run_roadmap_critic(state)
 
     # 4. finalize
