@@ -13,19 +13,28 @@ backend/main.py가 agent1·agent2 결과(dict)와 온보딩 request를 넘기면
 
 import json
 import re
-import sys
 
 from .models import JobRequirement, ProfileDiagnosis
 from .pipeline import run_agent3
 
-# 콘솔 로깅에 이모지/한글이 섞이므로 stdout을 UTF-8로 (Windows cp949 콘솔 대비). Docker는 이미 UTF-8.
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
-
 _DEFAULT_WEEKLY_HOURS = 10
 _WEEK_KEYS = ["week1To2", "week3To4", "week5To6", "week7To8"]
+
+
+def _log(msg: str = "") -> None:
+    """Agent1/Agent2와 동일하게 stdout으로 로그를 찍는다(런타임이 timestamp 부착).
+
+    flush=True로 비동기/버퍼 환경에서도 즉시 출력. 콘솔 인코딩(cp949 등)이 이모지를
+    못 그릴 때도 죽지 않도록 안전 폴백. (Docker stdout은 UTF-8이라 그대로 출력)
+    """
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        import sys
+
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        sys.stdout.write(msg.encode(enc, "replace").decode(enc, "replace") + "\n")
+        sys.stdout.flush()
 
 
 class Agent3:
@@ -51,16 +60,16 @@ class Agent3:
         owned_skills = list(dict.fromkeys([*onboarding_skills, *resume_skills]))
 
         # ── 입력 로깅 (Agent1 스타일 차용) ──
-        print("\n================ [Agent3 Input Verification] ================")
-        print(f"ℹ️ [Agent3] 목표직무={target_role} / 주당 가용시간={weekly_hours}h")
-        print(f"ℹ️ [Agent3] 에이전트1 정성 진단 수신:")
-        print(f"   - 요약(summary): {str(agent1_result.get('summary', ''))[:60]}...")
-        print(f"   - 강점(strengths): {agent1_result.get('strengths', [])}")
-        print(f"   - 보완점(weaknesses): {agent1_result.get('weaknesses', [])}")
-        print(f"ℹ️ [Agent3] 보유 스킬 병합: 온보딩 {onboarding_skills} + 이력서 {resume_skills}")
-        print(f"   → 최종 owned_skills(갭 제외 기준): {owned_skills}")
-        print(f"ℹ️ [Agent3] 에이전트2 직무 키워드: {agent2_result.get('keywords', [])}")
-        print("=============================================================\n")
+        _log("\n================ [Agent3 Input Verification] ================")
+        _log(f"ℹ️ [Agent3] 목표직무={target_role} / 주당 가용시간={weekly_hours}h")
+        _log(f"ℹ️ [Agent3] 에이전트1 정성 진단 수신:")
+        _log(f"   - 요약(summary): {str(agent1_result.get('summary', ''))[:60]}...")
+        _log(f"   - 강점(strengths): {agent1_result.get('strengths', [])}")
+        _log(f"   - 보완점(weaknesses): {agent1_result.get('weaknesses', [])}")
+        _log(f"ℹ️ [Agent3] 보유 스킬 병합: 온보딩 {onboarding_skills} + 이력서 {resume_skills}")
+        _log(f"   → 최종 owned_skills(갭 제외 기준): {owned_skills}")
+        _log(f"ℹ️ [Agent3] 에이전트2 직무 키워드: {agent2_result.get('keywords', [])}")
+        _log("=============================================================\n")
 
         profile = ProfileDiagnosis(
             major=getattr(request, "majorAndYear", "") or "",
@@ -85,7 +94,7 @@ class Agent3:
             # evidence_strength는 에이전트2가 주지 않음 → Agent3가 데이터로 추론
         )
 
-        print(f"💡 [Agent3] 갭 분석 및 주차별 로드맵 생성 중...")
+        _log(f"💡 [Agent3] 갭 분석 및 주차별 로드맵 생성 중...")
         state = await run_agent3(profile, job, weekly_hours=weekly_hours)
 
         _log_trace(state)
@@ -110,22 +119,22 @@ def _parse_weekly_hours(available_time, default: int = _DEFAULT_WEEKLY_HOURS) ->
 def _log_trace(state) -> None:
     """파이프라인 노드별 결정(state.trace)을 'why-this-path' 타임라인으로 출력."""
     trace = getattr(state, "trace", None) or []
-    print("\n================ [Agent3 Trace] (why-this-path) ================")
+    _log("\n================ [Agent3 Trace] (why-this-path) ================")
     for t in trace:
         decision = f" → {t.decision}" if t.decision else ""
         tool = f" [tool:{t.tool_called}]" if t.tool_called else ""
-        print(f"   · {t.node}{decision}{tool}: {t.output_summary}")
+        _log(f"   · {t.node}{decision}{tool}: {t.output_summary}")
     fo = getattr(state, "final_output", None)
     if fo is not None:
-        print(f"ℹ️ [Agent3] verified={fo.verified}, disclaimer={fo.disclaimer}")
-    print("================================================================\n")
+        _log(f"ℹ️ [Agent3] verified={fo.verified}, disclaimer={fo.disclaimer}")
+    _log("================================================================\n")
 
 
 def _log_final_output(result: dict) -> None:
     """프론트 반환 dict를 Agent1 스타일 박스형 JSON으로 출력."""
-    print("\n================ [Agent3 Final Output] ================")
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-    print("=======================================================\n")
+    _log("\n================ [Agent3 Final Output] ================")
+    _log(json.dumps(result, ensure_ascii=False, indent=2))
+    _log("=======================================================\n")
 
 
 def _to_roadmap_response(state, target_role: str) -> dict:
