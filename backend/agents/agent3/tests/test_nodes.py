@@ -112,7 +112,7 @@ def test_gap_unknown_skill_no_web_lowers_verified(monkeypatch, profile_frontend)
 def test_roadmap_covers_all_gaps_and_attaches_resources(profile_frontend, job_frontend):
     st = Agent3State(profile=profile_frontend, job_requirement=job_frontend, weekly_hours=8)
     st = _run(run_gap_analysis(st))
-    st = run_roadmap_plan(st)
+    st = _run(run_roadmap_plan(st))
     rm = st.roadmap
 
     covered = set()
@@ -135,5 +135,5 @@ def test_roadmap_empty_when_no_gaps(profile_frontend, job_frontend):
     st = Agent3State(profile=profile_frontend, job_requirement=job_frontend, weekly_hours=8)
     st = _run(run_gap_analysis(st))
     st.gap_analysis.gaps = []
-    st = run_roadmap_plan(st)
+    st = _run(run_roadmap_plan(st))
     assert st.roadmap.weeks == []

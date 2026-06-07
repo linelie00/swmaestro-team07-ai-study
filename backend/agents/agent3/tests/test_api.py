@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 from agents.agent3.Agent3 import Agent3, _parse_weekly_hours
+
+
+def _run(coro):
+    return asyncio.run(coro)
 
 
 def _request(**kw):
@@ -40,7 +45,7 @@ def test_agent3_wrapper_output_shape():
         "required_experience": [],
         "keywords": ["React", "TypeScript", "상태관리"],
     }
-    result = Agent3().default(req, a1, a2)
+    result = _run(Agent3().default(req, a1, a2))
 
     # 최상위 키
     assert set(result) == {"recommendedPath", "skillGaps", "roadmap"}
@@ -63,5 +68,5 @@ def test_agent3_wrapper_output_shape():
 def test_agent3_wrapper_empty_job():
     # 빈 job → 갭 없음 → 빈 로드맵 버킷 (크래시 없음)
     req = _request()
-    result = Agent3().default(req, {}, {"required_skills": [], "keywords": []})
+    result = _run(Agent3().default(req, {}, {"required_skills": [], "keywords": []}))
     assert set(result["roadmap"]) == {"week1To2", "week3To4", "week5To6", "week7To8"}
